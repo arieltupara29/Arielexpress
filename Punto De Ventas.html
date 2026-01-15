@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistema Maestro - Consorcio Ariel Polanco</title>
+    <style>
+        :root { 
+            --p: #1b5e20; --s: #0d47a1; --a: #c62828; --d: #121212; 
+            --gold: #ffc107; --bg: #f4f7f6; --white: #ffffff;
+        }
+
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); color: #333; }
+        .page { display: none; opacity: 0; min-height: 100vh; }
+        .page.active { display: block; opacity: 1; transition: 0.3s; }
+
+        /* Componentes Globales */
+        .navbar { background: var(--d); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--p); position: sticky; top: 0; z-index: 1000; }
+        .logo-nav { width: 35px; height: 35px; border-radius: 50%; border: 2px solid white; margin-right: 10px; vertical-align: middle; }
+        .container { max-width: 500px; margin: 0 auto; padding: 15px; }
+        .card { background: var(--white); border-radius: 18px; padding: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); margin-bottom: 15px; border: 1px solid #eee; }
+        
+        /* Login */
+        .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; background: var(--d); }
+        .login-card { background: white; padding: 40px; border-radius: 30px; width: 85%; max-width: 350px; text-align: center; }
+        .logo-oficial { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--p); margin-bottom: 15px; }
+
+        /* Inputs y Botones */
+        input, select { width: 100%; padding: 15px; margin: 8px 0; border: 2px solid #ddd; border-radius: 12px; font-size: 16px; box-sizing: border-box; outline: none; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-p { background: var(--p); }
+        .btn-s { background: var(--s); }
+        .btn-a { background: var(--a); }
+        .btn-logout { background: var(--a); padding: 8px 15px; width: auto; font-size: 12px; }
+
+        /* Monitor y Tickets */
+        .monitor-box { background: #002b11; color: white; border-radius: 15px; padding: 15px; border-left: 6px solid var(--gold); }
+        .result-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); align-items: center; }
+        .num-ganador { color: var(--gold); font-weight: 900; font-family: monospace; font-size: 1.2rem; }
+        
+        #ticket-render { background: white; border: 2px solid #333; padding: 20px; position: relative; font-family: monospace; background-image: radial-gradient(#ccc 0.5px, transparent 0.5px); background-size: 15px 15px; }
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 30px; opacity: 0.07; color: var(--p); font-weight: bold; pointer-events: none; white-space: nowrap; }
+
+        .lotto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .lotto-btn { padding: 14px; border: 2px solid #eee; border-radius: 12px; background: white; font-weight: bold; text-align: center; cursor: pointer; }
+        .selected { border-color: var(--p); background: #e8f5e9; color: var(--p); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th, td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <div id="page-login" class="page active">
+        <div class="login-container">
+            <div class="login-card">
+                <img src="https://i.ibb.co/L97q22P/ariel-logo.png" class="logo-oficial">
+                <h2 style="color:var(--p); margin:0;">Ariel Loto</h2>
+                <p style="font-size:10px; letter-spacing: 2px; color:#666;">CONSORCIO ARIEL POLANCO</p>
+                <input type="text" id="user" placeholder="Usuario">
+                <input type="password" id="pass" placeholder="Contraseña">
+                <button class="btn btn-p" onclick="login()">ENTRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-admin" class="page">
+        <nav class="navbar">
+            <span><img src="https://i.ibb.co/L97q22P/ariel-logo.png" class="logo-nav"><b>Maestro</b></span>
+            <button class="btn btn-logout" onclick="logout()">SALIR</button>
+        </nav>
+        <div class="container">
+            <div class="card">
+                <h3>👥 Crear Nueva Banca</h3>
+                <input type="text" id="new-name" placeholder="Nombre de la Banca">
+                <input type="text" id="new-user" placeholder="Usuario">
+                <input type="password" id="new-pass" placeholder="Contraseña">
+                <button class="btn btn-p" onclick="crearUsuario()">REGISTRAR BANCA</button>
+            </div>
+            
+            <div class="card">
+                <h3>🏆 Publicar Ganadores</h3>
+                <select id="res-lot"><option>La Primera</option><option>La Real</option><option>Gana Más</option><option>Nacional</option></select>
+                <input type="text" id="res-val" placeholder="00-00-00">
+                <button class="btn btn-s" onclick="publicarPremios()">PUBLICAR RESULTADO</button>
+            </div>
+
+            <div class="card">
+                <h3>📊 Ventas y Cierres Hoy</h3>
+                <div id="admin-ventas"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-pos" class="page">
+        <nav class="navbar">
+            <span><img src="https://i.ibb.co/L97q22P/ariel-logo.png" class="logo-nav"><b id="v-name">Banca</b></span>
+            <button class="btn btn-logout" onclick="logout()">SALIR</button>
+        </nav>
+        <div class="container">
+            <div class="card monitor-box">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>⚡ ARIEL EXPRESS</span>
+                    <span id="timer" style="color:var(--gold); font-weight:bold; font-family:monospace;">05:00</span>
+                </div>
+                <div id="monitor-list" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="card">
+                <span style="font-weight:bold; color:var(--p)">1. Seleccione Lotería</span>
+                <div class="lotto-grid" id="lotto-grid"></div>
+
+                <span style="font-weight:bold; color:var(--p)">2. Jugada</span>
+                <div style="display:flex; gap:10px;"><input type="text" id="num" placeholder="No."><input type="number" id="mon" placeholder="$$"></div>
+                <button class="btn btn-p" onclick="addJugada()">AÑADIR AL TICKET</button>
+
+                <div id="ticket-render" style="margin-top:20px;">
+                    <div class="watermark">ARIEL POLANCO</div>
+                    <center>
+                        <img src="https://i.ibb.co/L97q22P/ariel-logo.png" style="width:40px; border-radius:50%;"><br>
+                        <b>CONSORCIO ARIEL POLANCO</b><br>
+                        <small id="t-id">#TICKET</small>
+                    </center>
+                    <div id="t-cont" style="margin:15px 0; border-top:1px dashed #000; padding-top:10px;"></div>
+                    <div style="text-align:right; font-weight:bold; border-top:2px solid #000; padding-top:5px;">
+                        TOTAL: <span id="t-tot">$0.00</span>
+                    </div>
+                </div>
+                <button class="btn btn-s" onclick="vender()">📱 ENVIAR WHATSAPP</button>
+            </div>
+
+            <div class="card" style="background: #fff3e0; border: 2px solid #ffcc80;">
+                <h3 style="margin:0; color: #e65100;">💰 Mi Cuadre</h3>
+                <div id="cuadre-vendedor" style="margin:10px 0; font-family:monospace;">
+                    VENTA BRUTA: <span id="v-bruta">$0.00</span><br>
+                    TOTAL NETO: <b id="v-neto">$0.00</b>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <button class="btn" style="background:#555;" onclick="imprimirCuadre()">🖨️ CUADRE</button>
+                    <button class="btn btn-a" onclick="cerrarCaja()">🔒 CERRAR DÍA</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- BASE DE DATOS LOCAL ---
+        let db_users = JSON.parse(localStorage.getItem('ariel_users')) || [
+            { u: "ariel", p: "admin123", rol: "admin", nombre: "Ariel Polanco" },
+            { u: "banca1", p: "vende123", rol: "vendedor", nombre: "Banca Principal" }
+        ];
+        let db_tickets = JSON.parse(localStorage.getItem('ariel_tickets')) || [];
+        let db_res = JSON.parse(localStorage.getItem('ariel_res')) || [];
+        let db_cierres = JSON.parse(localStorage.getItem('ariel_cierres')) || [];
+        
+        let sesion = null, lotoSel = "", bolsa = [];
+        const Loterias = ["Ariel Express ⚡", "La Primera", "La Real", "Gana Más", "Loteka", "Nacional"];
+
+        // --- LÓGICA DE USUARIOS ---
+        function login() {
+            const u = document.getElementById('user').value.trim().toLowerCase();
+            const p = document.getElementById('pass').value.trim();
+            const user = db_users.find(x => x.u === u && x.p === p);
+            if(user) {
+                sesion = user;
+                document.getElementById('page-login').classList.remove('active');
+                if(user.rol === 'admin') {
+                    document.getElementById('page-admin').classList.add('active');
+                    updateAdminDashboard();
+                } else {
+                    document.getElementById('page-pos').classList.add('active');
+                    document.getElementById('v-name').innerText = user.nombre;
+                    renderLottos(); updateMonitor(); updateVendedorCuadre();
+                }
+            } else { alert("Usuario o Clave incorrecta"); }
+        }
+
+        function crearUsuario() {
+            let n = document.getElementById('new-name').value;
+            let u = document.getElementById('new-user').value.toLowerCase();
+            let p = document.getElementById('new-pass').value;
+            if(!n || !u || !p) return alert("Complete los datos");
+            db_users.push({ u, p, rol: "vendedor", nombre: n });
+            localStorage.setItem('ariel_users', JSON.stringify(db_users));
+            alert("Banca creada con éxito");
+            updateAdminDashboard();
+        }
+
+        // --- LÓGICA DE VENTAS ---
+        function renderLottos() {
+            document.getElementById('lotto-grid').innerHTML = Loterias.map(l => `
+                <div class="lotto-btn ${lotoSel === l ? 'selected' : ''}" onclick="lotoSel='${l}';renderLottos()">${l}</div>
+            `).join('');
+        }
+
+        function addJugada() {
+            if(!lotoSel) return alert("Elija Lotería");
+            let n = document.getElementById('num').value, m = parseFloat(document.getElementById('mon').value);
+            if(!n || isNaN(m)) return;
+            bolsa.push({n, m});
+            drawTicket();
+            document.getElementById('num').value = ""; document.getElementById('mon').value = "";
+        }
+
+        function drawTicket() {
+            let t = 0;
+            document.getElementById('t-cont').innerHTML = bolsa.map(j => { t += j.m; return `<div style="display:flex; justify-content:space-between;"><span>${j.n}</span><span>$${j.m}</span></div>`; }).join('');
+            document.getElementById('t-tot').innerText = "$" + t.toFixed(2);
+            document.getElementById('t-id').innerText = "#TKT-" + Math.random().toString(36).substr(2, 5).toUpperCase();
+        }
+
+        function vender() {
+            if(bolsa.length === 0) return;
+            let id = document.getElementById('t-id').innerText;
+            let tot = parseFloat(document.getElementById('t-tot').innerText.replace('$',''));
+            db_tickets.push({ id, tot, date: new Date().toLocaleDateString(), vend: sesion.u, vendNom: sesion.nombre, lot: lotoSel, jugadas: [...bolsa] });
+            localStorage.setItem('ariel_tickets', JSON.stringify(db_tickets));
+            
+            let txt = `🍀 *ARIEL POLANCO* %0A*ID:* ${id}%0A*Lotto:* ${lotoSel}%0A-----------------%0A`;
+            bolsa.forEach(j => txt += `${j.n} ---> $${j.m}%0A`);
+            txt += `-----------------%0A*TOTAL: $${tot.toFixed(2)}*`;
+            window.open(`https://wa.me/?text=${txt}`);
+            bolsa = []; drawTicket(); updateVendedorCuadre();
+        }
+
+        // --- CUADRE Y CIERRE ---
+        function updateVendedorCuadre() {
+            let hoy = new Date().toLocaleDateString();
+            let total = db_tickets.filter(t => t.date === hoy && t.vend === sesion.u).reduce((a,b)=>a+b.tot, 0);
+            document.getElementById('v-bruta').innerText = "$" + total.toFixed(2);
+            document.getElementById('v-neto').innerText = "$" + total.toFixed(2);
+        }
+
+        function imprimirCuadre() {
+            const v = document.getElementById('v-bruta').innerText;
+            let txt = `━━━━━━━━━━━━━━%0A📊 *CUADRE DIARIO*%0A*${sesion.nombre}*%0A━━━━━━━━━━━━━━%0A📅 Fecha: ${new Date().toLocaleDateString()}%0AVenta Bruta: ${v}%0A━━━━━━━━━━━━━━%0A*NETO: ${v}*%0A_Consorcio Ariel Polanco_`;
+            window.open(`https://wa.me/?text=${txt}`);
+        }
+
+        function cerrarCaja() {
+            let hoy = new Date().toLocaleDateString();
+            let total = db_tickets.filter(t => t.date === hoy && t.vend === sesion.u).reduce((a,b)=>a+b.tot, 0);
+            if(total === 0) return alert("Sin ventas para cerrar.");
+            if(confirm("¿Cerrar caja hoy? La venta volverá a $0.00 mañana.")) {
+                db_cierres.push({ fecha: hoy, banca: sesion.nombre, total: total });
+                localStorage.setItem('ariel_cierres', JSON.stringify(db_cierres));
+                alert("Cierre Exitoso"); location.reload();
+            }
+        }
+
+        // --- ADMINISTRACIÓN ---
+        function publicarPremios() {
+            let l = document.getElementById('res-lot').value, v = document.getElementById('res-val').value;
+            if(!v) return;
+            db_res.unshift({ lot: l, val: v, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+            localStorage.setItem('ariel_res', JSON.stringify(db_res.slice(0, 20)));
+            alert("Resultado Publicado"); updateAdminDashboard();
+        }
+
+        function updateAdminDashboard() {
+            let hoy = new Date().toLocaleDateString();
+            let html = `<table><tr><th>Banca</th><th>Venta Hoy</th></tr>`;
+            db_users.filter(u => u.rol === 'vendedor').forEach(v => {
+                let venta = db_tickets.filter(t => t.date === hoy && t.vend === v.u).reduce((a,b)=>a+b.tot, 0);
+                html += `<tr><td>${v.nombre}</td><td>$${venta.toFixed(2)}</td></tr>`;
+            });
+            document.getElementById('admin-ventas').innerHTML = html + "</table>";
+        }
+
+        function updateMonitor() {
+            document.getElementById('monitor-list').innerHTML = db_res.slice(0, 5).map(r => `
+                <div class="result-item">
+                    <span>${r.lot} <small style="opacity:0.4">${r.time}</small></span>
+                    <span class="num-ganador">${r.val}</span>
+                </div>
+            `).join('');
+        }
+
+        // Ariel Express (Cada 60 seg para prueba rápida)
+        setInterval(() => {
+            let s = new Date().getSeconds();
+            let r = 60 - s;
+            document.getElementById('timer').innerText = "00:" + (r < 10 ? '0'+r : r);
+            if(r === 60) {
+                let n = Math.floor(Math.random()*100).toString().padStart(2,'0');
+                db_res.unshift({ lot: "Ariel Express ⚡", val: n, time: "Ahora" });
+                updateMonitor();
+            }
+        }, 1000);
+
+        function logout() { location.reload(); }
+    </script>
+</body>
+</html>
